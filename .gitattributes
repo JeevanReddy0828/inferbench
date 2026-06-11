@@ -1,0 +1,3 @@
+# Normalize line endings: the repo targets WSL2/Linux, keep LF in the tree.
+* text=auto eol=lf
+*.png binary

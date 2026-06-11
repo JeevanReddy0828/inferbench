@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+
+# Project artifacts (engines / traces are large + GPU-specific; keep only json + png)
+*.engine
+*.onnx
+*.trt
+*.plan
+*.nsys-rep
+*.qdrep
+*.sqlite
+calibration.cache
+
+# Keep committed result evidence, ignore scratch
+results/scratch/
+data/
+
+# Editor
+.vscode/
+.idea/
+*.swp

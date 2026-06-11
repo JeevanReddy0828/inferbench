@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "inferbench"
+version = "0.1.0"
+description = "Inference benchmarking & optimization toolkit for resource-constrained NVIDIA GPUs"
+readme = "README.md"
+requires-python = ">=3.10,<3.13"
+license = { text = "MIT" }
+authors = [{ name = "Jeevan Arlagadda" }]
+keywords = ["tensorrt", "inference", "benchmarking", "cuda", "triton", "quantization"]
+
+# NOTE: torch / tensorrt / onnxruntime-gpu / triton are NOT listed here because they
+# require GPU-/CUDA-specific wheels installed from the PyTorch + NVIDIA indexes.
+# See env/SETUP.md for the exact, version-pinned install commands.
+dependencies = [
+    "numpy>=1.24",
+    "matplotlib>=3.7",
+    "tabulate>=0.9",
+]
+
+[project.optional-dependencies]
+# Pure-python tooling that runs anywhere (CI, no GPU) — used for the metrics unit tests.
+dev = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+]
+
+[project.scripts]
+inferbench-vision = "scripts.run_vision_bench:main"
+inferbench-kernel = "scripts.bench_kernel:main"
+
+[tool.setuptools]
+packages = ["inferbench"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+markers = [
+    "gpu: tests that require a CUDA GPU and the full DL stack (deselect with -m 'not gpu')",
+]
