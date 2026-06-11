@@ -29,4 +29,8 @@ def get_backend(name: str) -> type[Backend]:
         from .tensorrt_be import TensorRTBackend
 
         return TensorRTBackend
+    if name in ("torch_trt", "torch-tensorrt", "torchtrt"):
+        from .torch_tensorrt_be import TorchTensorRTBackend
+
+        return TorchTensorRTBackend
     raise KeyError(f"unknown backend '{name}'")

@@ -81,10 +81,11 @@ See [`env/SETUP.md`](env/SETUP.md) for the full WSL2 + CUDA 12.4 + Python 3.11 s
 (the host's Python 3.14 cannot host this stack).
 
 ```bash
-pytest -m "not gpu"                 # methodology unit tests (no GPU needed)
+pytest -m "not gpu"                 # methodology + roofline unit tests (no GPU needed)
 pytest                              # + GPU correctness/parity tests
 python scripts/run_vision_bench.py  # v1 headline sweep -> results/
 python scripts/bench_kernel.py      # Triton RMSNorm microbenchmark
+python scripts/run_int8_study.py    # v2 TensorRT FP16-vs-INT8 PTQ study
 ```
 
 ---
@@ -96,9 +97,9 @@ inferbench/
   bench/      runner.py (CUDA-event harness)  +  metrics.py (pure, tested reductions)
   backends/   base.py ABC  +  torch_eager / torch_compile / onnxruntime / tensorrt
   workloads/  vision.py (ResNet50; ViT in v3)
-  kernels/    triton/rmsnorm.py (fused, autotuned)  +  cuda/ (custom op, v2)
-  quant/      INT8 PTQ calibration (v2)
-  analysis/   plots.py (tables + charts)  +  roofline.py (v2)
+  kernels/    triton/rmsnorm.py (fused, autotuned)  +  cuda/fused_bias_gelu (C++ op)
+  quant/      calibrate.py (TensorRT INT8 entropy PTQ)
+  analysis/   plots.py (tables + charts)  +  roofline.py (mem/compute-bound)
 scripts/      run_vision_bench.py, bench_kernel.py
 tests/        test_metrics (pure)  +  test_kernels / test_backends (gpu-marked)
 ```
@@ -112,10 +113,15 @@ by construction.
 
 ## Roadmap
 
-- **v1 (this release):** measurement harness + ResNet50 across 4 backends (FP16) +
-  one Triton kernel + reproducible results. *A complete portfolio piece on its own.*
-- **v2:** TensorRT **INT8 PTQ** with calibration (accuracy-vs-latency curve) ·
-  custom **CUDA C++** fused op via PyTorch extension · **roofline + Nsight** deep-dive.
+- **v1:** measurement harness + ResNet50 across 4 backends (FP16) + one Triton
+  kernel + reproducible results. *A complete portfolio piece on its own.*
+- **v2 (implemented):** TensorRT **INT8 PTQ** with entropy calibration
+  ([`quant/calibrate.py`](inferbench/quant/calibrate.py)) + FP16-vs-INT8 study
+  ([`scripts/run_int8_study.py`](scripts/run_int8_study.py)) · second TRT path via
+  **Torch-TensorRT** ([`backends/torch_tensorrt_be.py`](inferbench/backends/torch_tensorrt_be.py)) ·
+  custom **CUDA C++** fused bias+GELU op via PyTorch extension
+  ([`kernels/cuda/`](inferbench/kernels/cuda)) · **roofline** model
+  ([`analysis/roofline.py`](inferbench/analysis/roofline.py)) + Nsight workflow.
 - **v3:** ViT-B/16 · small-LLM decode track (Qwen2.5-0.5B: TTFT + tokens/s, INT8
   weight-only). LLM-on-TensorRT is scoped as an **experimental, fixed-shape prefill**
   study — dynamic KV-cache export is explicitly out of scope and documented as such.

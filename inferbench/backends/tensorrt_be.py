@@ -47,7 +47,8 @@ class TensorRTBackend(Backend):
     # ---- engine construction -------------------------------------------------
     def _engine_path(self, example_inputs: Any) -> str:
         os.makedirs(self.cache_dir, exist_ok=True)
-        key = f"{tuple(example_inputs.shape)}-{self.dtype}-{self.min_bs}-{self.opt_bs}-{self.max_bs}"
+        precision = "int8" if self.calibrator is not None else self.dtype
+        key = f"{tuple(example_inputs.shape)}-{precision}-{self.min_bs}-{self.opt_bs}-{self.max_bs}"
         h = hashlib.sha1(key.encode()).hexdigest()[:12]
         return os.path.join(self.cache_dir, f"engine_{h}.trt")
 
@@ -113,6 +114,9 @@ class TensorRTBackend(Backend):
             config.set_flag(trt.BuilderFlag.FP16)
         if self.calibrator is not None:  # v2 INT8 PTQ path
             config.set_flag(trt.BuilderFlag.INT8)
+            # FP16 fallback: layers TRT can't profitably run in INT8 stay in FP16
+            # rather than dropping to FP32 — best accuracy/latency on Ampere.
+            config.set_flag(trt.BuilderFlag.FP16)
             config.int8_calibrator = self.calibrator
 
         profile = builder.create_optimization_profile()
@@ -123,6 +127,16 @@ class TensorRTBackend(Backend):
             (self.max_bs, c, h_, w),
         )
         config.add_optimization_profile(profile)
+        if self.calibrator is not None:
+            # INT8 calibration runs at a fixed shape; calibrate at the opt batch.
+            calib_profile = builder.create_optimization_profile()
+            calib_profile.set_shape(
+                "input",
+                (self.opt_bs, c, h_, w),
+                (self.opt_bs, c, h_, w),
+                (self.opt_bs, c, h_, w),
+            )
+            config.set_calibration_profile(calib_profile)
 
         serialized = builder.build_serialized_network(network, config)
         if serialized is None:
